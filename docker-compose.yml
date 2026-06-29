@@ -1,0 +1,28 @@
+services:
+  portal-54d:
+    image: portal-54d:latest
+    build: .
+    restart: unless-stopped
+    environment:
+      ENV: prod
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_TTL_SECONDS: "604800"
+      SESSION_IDLE_SECONDS: "43200"
+      RL_LIMIT: "15"
+      RL_WINDOW: "60"
+    networks: [traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.routers.portal54d.rule=Host(`web.54d.com`)
+      - traefik.http.routers.portal54d.entrypoints=websecure
+      - traefik.http.routers.portal54d.tls=true
+      - traefik.http.routers.portal54d.tls.certresolver=le
+      - traefik.http.services.portal54d.loadbalancer.server.port=8099
+      # rate-limit en el edge (complementa el app-level)
+      - traefik.http.middlewares.portal54d-rl.ratelimit.average=30
+      - traefik.http.middlewares.portal54d-rl.ratelimit.burst=60
+      - traefik.http.routers.portal54d.middlewares=portal54d-rl
+networks:
+  traefik:
+    external: true
