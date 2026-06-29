@@ -1,28 +1,44 @@
+version: "3.7"
+
+# Stack para Docker Swarm + Traefik (mismo patron que el n8n stack).
+# La imagen la construye GitHub Actions y la publica en GHCR; Swarm solo la jala
+# (Swarm NO construye desde Dockerfile). SESSION_SECRET se define en Portainer.
+
 services:
-  portal-54d:
-    image: portal-54d:latest
-    build: .
-    restart: unless-stopped
+  web54d:
+    image: ghcr.io/mathuz56/web-54d:latest
+    networks:
+      - network_public
     environment:
-      ENV: prod
-      SESSION_SECRET: ${SESSION_SECRET}
-      SESSION_TTL_SECONDS: "604800"
-      SESSION_IDLE_SECONDS: "43200"
-      RL_LIMIT: "15"
-      RL_WINDOW: "60"
-    networks: [traefik]
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=traefik
-      - traefik.http.routers.portal54d.rule=Host(`web.54d.com`)
-      - traefik.http.routers.portal54d.entrypoints=websecure
-      - traefik.http.routers.portal54d.tls=true
-      - traefik.http.routers.portal54d.tls.certresolver=le
-      - traefik.http.services.portal54d.loadbalancer.server.port=8099
-      # rate-limit en el edge (complementa el app-level)
-      - traefik.http.middlewares.portal54d-rl.ratelimit.average=30
-      - traefik.http.middlewares.portal54d-rl.ratelimit.burst=60
-      - traefik.http.routers.portal54d.middlewares=portal54d-rl
+      - ENV=prod
+      - SESSION_SECRET=${SESSION_SECRET}
+      - SESSION_TTL_SECONDS=604800
+      - SESSION_IDLE_SECONDS=43200
+      - RL_LIMIT=15
+      - RL_WINDOW=60
+      - GENERIC_TIMEZONE=America/New_York
+      - TZ=America/New_York
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.web54d.rule=Host(`web.54d.com`)
+        - traefik.http.routers.web54d.entrypoints=websecure
+        - traefik.http.routers.web54d.priority=1
+        - traefik.http.routers.web54d.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.web54d.service=web54d
+        - traefik.http.services.web54d.loadbalancer.server.port=8099
+        - traefik.http.services.web54d.loadbalancer.passHostHeader=1
+
 networks:
-  traefik:
+  network_public:
+    name: network_public
     external: true

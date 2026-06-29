@@ -1,0 +1,34 @@
+name: build-and-push
+
+# Construye la imagen Docker y la publica en GHCR (ghcr.io/mathuz56/web-54d:latest)
+# en cada push a main. Usa el GITHUB_TOKEN integrado (no requiere PAT).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/mathuz56/web-54d:latest
+            ghcr.io/mathuz56/web-54d:${{ github.sha }}
